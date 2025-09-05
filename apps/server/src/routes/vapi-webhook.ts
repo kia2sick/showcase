@@ -11,6 +11,14 @@ import { forLogging } from '../utils/redact.js';
  */
 export async function handleVapiWebhook(req: Request, res: Response) {
   try {
+    // Enhanced logging for debugging
+    console.log('\n🎯 === VAPI WEBHOOK RECEIVED ===');
+    console.log(`📞 Event Type: ${req.body?.type || 'UNKNOWN'}`);
+    console.log(`🆔 Call ID: ${req.body?.callId || 'UNKNOWN'}`);
+    console.log(`⏰ Timestamp: ${new Date().toLocaleTimeString()}`);
+    console.log('📋 Full Body:', JSON.stringify(req.body, null, 2));
+    console.log('=================================\n');
+
     logger.debug({ 
       headers: req.headers,
       body: forLogging(req.body) 
@@ -144,6 +152,13 @@ async function handleASRPartial(event: any) {
  */
 async function handleASRFinal(event: any) {
   try {
+    // Live transcription display
+    console.log('\n🎤 === LIVE TRANSCRIPTION ===');
+    console.log(`👤 CALLER SAID: "${event.transcript}"`);
+    console.log(`🎯 Confidence: ${(event.confidence * 100).toFixed(1)}%`);
+    console.log(`🆔 Call: ${event.callId}`);
+    console.log('============================\n');
+
     logger.info({
       callId: event.callId,
       transcript: event.transcript,
@@ -152,6 +167,7 @@ async function handleASRFinal(event: any) {
 
     const session = sessionStore.get(event.callId);
     if (!session) {
+      console.log('❌ No session found for call:', event.callId);
       logger.warn({
         callId: event.callId,
       }, 'No session found for ASR final event');
@@ -166,6 +182,8 @@ async function handleASRFinal(event: any) {
       confidence: event.confidence,
     });
 
+    console.log('🧠 Processing with AI agent...');
+
     // Generate agent response
     const response = await agentRouter.processMessage(session, event.transcript);
 
@@ -175,6 +193,13 @@ async function handleASRFinal(event: any) {
       text: response,
       timestamp: Date.now(),
     });
+
+    // Live response display
+    console.log('\n🤖 === AI AGENT RESPONSE ===');
+    console.log(`🗣️ AGENT SAYS: "${response}"`);
+    console.log(`🎯 Intent: ${session.currentIntent || 'detecting...'}`);
+    console.log(`📊 Data Collected:`, session.collected);
+    console.log('============================\n');
 
     logger.info({
       callId: event.callId,
@@ -187,6 +212,7 @@ async function handleASRFinal(event: any) {
     // via their API to have it spoken to the caller
 
   } catch (error) {
+    console.log('❌ ERROR processing speech:', error);
     logger.error({
       error,
       callId: event.callId,

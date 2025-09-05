@@ -46,6 +46,22 @@ app.get('/health', healthCheck);
 app.get('/health/detailed', detailedHealthCheck);
 app.post('/vapi/events', handleVapiWebhook);
 
+// Test webhook endpoint
+app.post('/vapi/test', (req, res) => {
+  console.log('\n🧪 === WEBHOOK TEST ===');
+  console.log('✅ Webhook endpoint is working!');
+  console.log('📋 Received body:', JSON.stringify(req.body, null, 2));
+  console.log('🌐 From IP:', req.ip);
+  console.log('=====================\n');
+  
+  res.json({ 
+    success: true, 
+    message: 'Webhook test successful!',
+    timestamp: new Date().toISOString(),
+    receivedData: req.body 
+  });
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
