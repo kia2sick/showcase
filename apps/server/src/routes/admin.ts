@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { sessionStore } from '../memory/session-store.js';
 import { vapiService } from '../services/vapi.js';
+import { bulkCallerService } from '../services/bulk-caller.js';
 import { config } from '../utils/env.js';
 import { serverLogger as logger } from '../utils/logger.js';
 import { forLogging } from '../utils/redact.js';
@@ -120,10 +121,30 @@ export async function getCallDetails(req: Request, res: Response) {
  */
 export async function initiateCall(req: Request, res: Response) {
   try {
+    // Enhanced outbound validation
+    if (!config.VAPI_OUTBOUND_ENABLED) {
+      return res.status(400).json({ 
+        error: 'Outbound calling disabled',
+        message: 'Set VAPI_OUTBOUND_ENABLED=true in .env file',
+        requiredConfig: {
+          VAPI_OUTBOUND_ENABLED: 'true',
+          VAPI_API_KEY: !!config.VAPI_API_KEY,
+          VAPI_ASSISTANT_ID: !!config.VAPI_ASSISTANT_ID,
+          VAPI_CALLER_NUMBER: !!config.VAPI_CALLER_NUMBER,
+        }
+      });
+    }
+
     if (!vapiService.isOutboundEnabled()) {
       return res.status(400).json({ 
-        error: 'Outbound calling not enabled',
-        message: 'Configure VAPI_OUTBOUND_ENABLED and required credentials'
+        error: 'Outbound calling not properly configured',
+        message: 'Missing required credentials',
+        requiredConfig: {
+          VAPI_API_KEY: !!config.VAPI_API_KEY ? '✅' : '❌ Missing',
+          VAPI_ASSISTANT_ID: !!config.VAPI_ASSISTANT_ID ? '✅' : '❌ Missing',
+          VAPI_CALLER_NUMBER: !!config.VAPI_CALLER_NUMBER ? '✅' : '❌ Missing',
+          VAPI_CALLEE_NUMBER: !!config.VAPI_CALLEE_NUMBER ? '✅' : '❌ Missing',
+        }
       });
     }
 
@@ -318,4 +339,112 @@ function calculateCompleteness(session: any): number {
 
   const completedFields = requiredFields.filter(field => !!session.collected[field]).length;
   return Math.round((completedFields / requiredFields.length) * 100);
+}
+
+/**
+ * Upload CSV and start bulk calling campaign
+ */
+export async function startBulkCampaign(req: Request, res: Response) {
+  try {
+    const { businessId, concurrent, delayBetweenCalls } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        error: 'CSV file is required',
+        message: 'Upload a CSV file with columns: phoneNumber, customerName, message',
+      });
+    }
+
+    if (!businessId) {
+      return res.status(400).json({
+        error: 'Business ID is required',
+      });
+    }
+
+    const result = await bulkCallerService.processCsvFile(file.path, businessId, {
+      concurrent: concurrent || 3,
+      delayBetweenCalls: delayBetweenCalls || 2000,
+    });
+
+    res.json({
+      success: true,
+      campaign: result,
+      message: `Bulk campaign started with ${result.totalNumbers} numbers`,
+    });
+
+  } catch (error) {
+    logger.error({ error, body: req.body }, 'Bulk campaign failed');
+    res.status(500).json({
+      error: 'Bulk campaign failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+}
+
+/**
+ * Get campaign status
+ */
+export async function getCampaignStatus(req: Request, res: Response) {
+  try {
+    const { campaignId } = req.params;
+    const campaign = bulkCallerService.getCampaignStatus(campaignId);
+
+    if (!campaign) {
+      return res.status(404).json({
+        error: 'Campaign not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      campaign,
+    });
+  } catch (error) {
+    logger.error({ error, campaignId: req.params.campaignId }, 'Failed to get campaign status');
+    res.status(500).json({
+      error: 'Failed to get campaign status',
+    });
+  }
+}
+
+/**
+ * List all campaigns
+ */
+export async function listCampaigns(req: Request, res: Response) {
+  try {
+    const campaigns = bulkCallerService.getAllCampaigns();
+
+    res.json({
+      success: true,
+      campaigns,
+      total: campaigns.length,
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to list campaigns');
+    res.status(500).json({
+      error: 'Failed to list campaigns',
+    });
+  }
+}
+
+/**
+ * Generate sample CSV for testing
+ */
+export async function generateSampleCsv(req: Request, res: Response) {
+  try {
+    const filePath = '/tmp/sample-bulk-calls.csv';
+    await bulkCallerService.generateSampleCsv(filePath);
+
+    res.download(filePath, 'sample-bulk-calls.csv', (err) => {
+      if (err) {
+        logger.error({ error: err }, 'Failed to download sample CSV');
+      }
+    });
+  } catch (error) {
+    logger.error({ error }, 'Failed to generate sample CSV');
+    res.status(500).json({
+      error: 'Failed to generate sample CSV',
+    });
+  }
 }

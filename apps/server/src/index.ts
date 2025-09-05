@@ -3,7 +3,7 @@ import { config, validateSTTConfig, validateTTSConfig, validateCRMConfig } from 
 import { serverLogger as logger } from './utils/logger.js';
 import { healthCheck, detailedHealthCheck } from './routes/health.js';
 import { handleVapiWebhook } from './routes/vapi-webhook.js';
-import { getDashboard, getCallDetails, initiateCall, getCallLogs, getAnalytics } from './routes/admin.js';
+import { getDashboard, getCallDetails, initiateCall, getCallLogs, getAnalytics, startBulkCampaign, getCampaignStatus, listCampaigns, generateSampleCsv } from './routes/admin.js';
 import { createBusiness, getBusinesses, getBusinessDetails, assignPhoneNumber, initiateBusinessCall, getPlatformStats, quickSetup } from './routes/business.js';
 
 // Validate configuration on startup
@@ -57,6 +57,12 @@ app.get('/admin/calls/:callId', getCallDetails);
 app.post('/admin/calls/initiate', initiateCall);
 app.get('/admin/logs', getCallLogs);
 app.get('/admin/analytics', getAnalytics);
+
+// Bulk Calling Routes
+app.post('/admin/bulk-campaign', startBulkCampaign);
+app.get('/admin/campaigns', listCampaigns);
+app.get('/admin/campaigns/:campaignId', getCampaignStatus);
+app.get('/admin/sample-csv', generateSampleCsv);
 
 // Business Management API Routes (SaaS Platform)
 app.post('/api/businesses', createBusiness);
