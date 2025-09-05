@@ -223,9 +223,12 @@
 
         <!-- Initiate Outbound Call -->
         <div class="section">
-            <h2>📞 Initiate Outbound Call</h2>
+            <h2>📞 Outbound Calling</h2>
+            
+            <!-- Single Call -->
             <div class="outbound-section">
                 <div>
+                    <h3>Single Call</h3>
                     <div class="form-group">
                         <label for="phone-number">Phone Number (E.164 format)</label>
                         <input type="tel" id="phone-number" placeholder="+1234567890" />
@@ -236,6 +239,56 @@
                     </div>
                 </div>
                 <button class="btn" onclick="initiateCall()">📞 Call Now</button>
+            </div>
+
+            <!-- Multiple Calls -->
+            <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #f5f5f7;">
+                <h3>Multiple Calls</h3>
+                <div class="form-group">
+                    <label for="multiple-numbers">Phone Numbers (one per line)</label>
+                    <textarea id="multiple-numbers" placeholder="+1234567890 John Smith
++1987654321 Jane Doe
++1555123456 Mike Johnson" style="width: 100%; height: 100px; padding: 12px; border: 1px solid #d2d2d7; border-radius: 8px; font-family: monospace;"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="concurrent-calls">Concurrent Calls</label>
+                        <select id="concurrent-calls" style="padding: 8px; border: 1px solid #d2d2d7; border-radius: 4px;">
+                            <option value="1">1 at a time</option>
+                            <option value="2">2 at a time</option>
+                            <option value="3" selected>3 at a time</option>
+                            <option value="5">5 at a time</option>
+                            <option value="10">10 at a time</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="call-delay">Delay Between Calls (seconds)</label>
+                        <input type="number" id="call-delay" value="2" min="0" max="60" style="width: 80px; padding: 8px; border: 1px solid #d2d2d7; border-radius: 4px;" />
+                    </div>
+                    <button class="btn" onclick="initiateMultipleCalls()" style="margin-top: 20px;">📞 Call All</button>
+                </div>
+            </div>
+
+            <!-- CSV Upload -->
+            <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #f5f5f7;">
+                <h3>CSV Bulk Calling</h3>
+                <div class="form-group">
+                    <label for="csv-file">Upload CSV File</label>
+                    <input type="file" id="csv-file" accept=".csv" style="padding: 8px;" />
+                    <small style="display: block; margin-top: 4px; color: #86868b;">
+                        CSV format: phoneNumber, customerName, message<br>
+                        <a href="/admin/sample-csv" target="_blank">Download sample CSV</a>
+                    </small>
+                </div>
+                <button class="btn" onclick="uploadCsvAndCall()">📊 Upload & Call CSV</button>
+            </div>
+        </div>
+
+        <!-- Active Campaigns -->
+        <div class="section">
+            <h2>🚀 Active Campaigns</h2>
+            <div id="active-campaigns">
+                <div class="loading">No active campaigns</div>
             </div>
         </div>
 
@@ -254,8 +307,12 @@
         // Load dashboard on page load
         window.addEventListener('load', () => {
             refreshDashboard();
+            loadActiveCampaigns();
             // Auto-refresh every 5 seconds
-            setInterval(refreshDashboard, 5000);
+            setInterval(() => {
+                refreshDashboard();
+                loadActiveCampaigns();
+            }, 5000);
         });
 
         async function refreshDashboard() {
@@ -377,6 +434,195 @@
             successEl.textContent = message;
             successEl.style.display = 'block';
             setTimeout(() => successEl.style.display = 'none', 5000);
+        }
+
+        // Multiple calls functionality
+        async function initiateMultipleCalls() {
+            const numbersText = document.getElementById('multiple-numbers').value.trim();
+            const concurrent = parseInt(document.getElementById('concurrent-calls').value);
+            const delay = parseInt(document.getElementById('call-delay').value) * 1000;
+
+            if (!numbersText) {
+                showError('Please enter phone numbers');
+                return;
+            }
+
+            // Parse phone numbers and names
+            const lines = numbersText.split('\n').filter(line => line.trim());
+            const calls = lines.map(line => {
+                const parts = line.trim().split(/\s+/);
+                const phoneNumber = parts[0];
+                const customerName = parts.slice(1).join(' ') || 'Customer';
+                
+                if (!phoneNumber.startsWith('+')) {
+                    throw new Error(`Invalid phone number format: ${phoneNumber}`);
+                }
+                
+                return { phoneNumber, customerName };
+            });
+
+            if (calls.length === 0) {
+                showError('No valid phone numbers found');
+                return;
+            }
+
+            showSuccess(`Starting ${calls.length} calls with ${concurrent} concurrent...`);
+            
+            let successCount = 0;
+            let failCount = 0;
+            const results = [];
+
+            // Process calls in batches
+            for (let i = 0; i < calls.length; i += concurrent) {
+                const batch = calls.slice(i, i + concurrent);
+                
+                console.log(`Processing batch ${Math.floor(i/concurrent) + 1}:`, batch.map(c => c.phoneNumber));
+                
+                // Process batch concurrently
+                const batchPromises = batch.map(async (call) => {
+                    try {
+                        const response = await fetch('/admin/calls/initiate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phoneNumber: call.phoneNumber,
+                                metadata: { customerName: call.customerName }
+                            })
+                        });
+
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            successCount++;
+                            results.push({ ...call, status: 'success', callId: result.callId });
+                            console.log(`✅ Called ${call.phoneNumber} - ID: ${result.callId}`);
+                        } else {
+                            failCount++;
+                            results.push({ ...call, status: 'failed', error: result.message });
+                            console.log(`❌ Failed ${call.phoneNumber}: ${result.message}`);
+                        }
+                    } catch (error) {
+                        failCount++;
+                        results.push({ ...call, status: 'failed', error: error.message });
+                        console.log(`❌ Error ${call.phoneNumber}: ${error.message}`);
+                    }
+                });
+
+                // Wait for batch to complete
+                await Promise.allSettled(batchPromises);
+
+                // Delay between batches
+                if (i + concurrent < calls.length && delay > 0) {
+                    console.log(`⏳ Waiting ${delay/1000}s before next batch...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+
+            // Show final results
+            showSuccess(`Campaign completed! ${successCount} successful, ${failCount} failed calls`);
+            console.log('📊 Final Results:', results);
+            
+            // Clear the form
+            document.getElementById('multiple-numbers').value = '';
+            
+            // Refresh dashboard to show new calls
+            setTimeout(refreshDashboard, 1000);
+        }
+
+        // CSV upload functionality
+        async function uploadCsvAndCall() {
+            const fileInput = document.getElementById('csv-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showError('Please select a CSV file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('csvFile', file);
+            formData.append('businessId', 'default'); // Use default business for now
+            formData.append('concurrent', document.getElementById('concurrent-calls').value);
+            formData.append('delayBetweenCalls', parseInt(document.getElementById('call-delay').value) * 1000);
+
+            try {
+                showSuccess('Uploading CSV and starting campaign...');
+                
+                const response = await fetch('/admin/bulk-campaign', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess(`CSV campaign started! ${result.campaign.totalNumbers} numbers queued`);
+                    fileInput.value = ''; // Clear file input
+                    
+                    // Monitor campaign progress
+                    monitorCampaign(result.campaign.campaignId);
+                } else {
+                    showError(result.message || 'CSV upload failed');
+                }
+            } catch (error) {
+                showError('CSV upload failed');
+                console.error('CSV upload error:', error);
+            }
+        }
+
+        // Monitor campaign progress
+        async function monitorCampaign(campaignId) {
+            const monitorInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/admin/campaigns/${campaignId}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const campaign = data.campaign;
+                        console.log(`📊 Campaign ${campaignId}: ${campaign.status}`);
+                        
+                        if (campaign.status === 'completed' || campaign.status === 'failed') {
+                            clearInterval(monitorInterval);
+                            showSuccess(`Campaign ${campaign.status}! Check logs for details.`);
+                            refreshDashboard();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Campaign monitoring error:', error);
+                }
+            }, 5000); // Check every 5 seconds
+
+            // Auto-stop monitoring after 10 minutes
+            setTimeout(() => {
+                clearInterval(monitorInterval);
+            }, 10 * 60 * 1000);
+        }
+
+        // Load active campaigns
+        async function loadActiveCampaigns() {
+            try {
+                const response = await fetch('/admin/campaigns');
+                const data = await response.json();
+                
+                const campaignsEl = document.getElementById('active-campaigns');
+                if (data.campaigns && data.campaigns.length > 0) {
+                    campaignsEl.innerHTML = data.campaigns.map(campaign => `
+                        <div class="call-item">
+                            <div class="call-info">
+                                <div class="call-id">Campaign ${campaign.campaignId.substring(0, 8)}...</div>
+                                <div class="call-details">
+                                    ${campaign.totalNumbers || 0} numbers • ${campaign.status} • Started: ${new Date(campaign.startTime).toLocaleTimeString()}
+                                </div>
+                            </div>
+                            <div class="call-status status-${campaign.status}">${campaign.status}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    campaignsEl.innerHTML = '<div class="loading">No active campaigns</div>';
+                }
+            } catch (error) {
+                document.getElementById('active-campaigns').innerHTML = '<div class="loading">Error loading campaigns</div>';
+            }
         }
     </script>
 </body>
