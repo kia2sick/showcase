@@ -3,6 +3,8 @@ import { config, validateSTTConfig, validateTTSConfig, validateCRMConfig } from 
 import { serverLogger as logger } from './utils/logger.js';
 import { healthCheck, detailedHealthCheck } from './routes/health.js';
 import { handleVapiWebhook } from './routes/vapi-webhook.js';
+import { getDashboard, getCallDetails, initiateCall, getCallLogs, getAnalytics } from './routes/admin.js';
+import { createBusiness, getBusinesses, getBusinessDetails, assignPhoneNumber, initiateBusinessCall, getPlatformStats, quickSetup } from './routes/business.js';
 
 // Validate configuration on startup
 try {
@@ -21,6 +23,9 @@ const app = express();
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (admin dashboard)
+app.use('/admin', express.static('public'));
 
 // Add request logging middleware
 app.use((req, res, next) => {
@@ -45,6 +50,22 @@ app.use((req, res, next) => {
 app.get('/health', healthCheck);
 app.get('/health/detailed', detailedHealthCheck);
 app.post('/vapi/events', handleVapiWebhook);
+
+// Admin Dashboard API Routes
+app.get('/admin/dashboard', getDashboard);
+app.get('/admin/calls/:callId', getCallDetails);
+app.post('/admin/calls/initiate', initiateCall);
+app.get('/admin/logs', getCallLogs);
+app.get('/admin/analytics', getAnalytics);
+
+// Business Management API Routes (SaaS Platform)
+app.post('/api/businesses', createBusiness);
+app.get('/api/businesses', getBusinesses);
+app.get('/api/businesses/:businessId', getBusinessDetails);
+app.post('/api/businesses/:businessId/phone-numbers', assignPhoneNumber);
+app.post('/api/businesses/:businessId/calls', initiateBusinessCall);
+app.get('/api/platform/stats', getPlatformStats);
+app.post('/api/quick-setup', quickSetup);
 
 // Test webhook endpoint
 app.post('/vapi/test', (req, res) => {
@@ -73,6 +94,8 @@ app.get('/', (req, res) => {
       health: '/health',
       detailedHealth: '/health/detailed',
       vapiWebhook: '/vapi/events',
+      adminDashboard: '/admin/admin.html',
+      adminAPI: '/admin/dashboard',
     },
     services: {
       stt: config.STT_PROVIDER,

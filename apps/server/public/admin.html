@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice AI Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #1d1d1f;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+        .stat-card .label {
+            font-size: 16px;
+            color: #86868b;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #1d1d1f;
+        }
+        .call-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #f5f5f7;
+            transition: background 0.2s;
+        }
+        .call-item:hover {
+            background: #f9f9f9;
+        }
+        .call-item:last-child {
+            border-bottom: none;
+        }
+        .call-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .call-id {
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+        .call-details {
+            font-size: 14px;
+            color: #86868b;
+        }
+        .call-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-active {
+            background: #34c759;
+            color: white;
+        }
+        .status-ended {
+            background: #86868b;
+            color: white;
+        }
+        .outbound-section {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 20px;
+            align-items: end;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #1d1d1f;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .btn {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #0056cc;
+        }
+        .btn:disabled {
+            background: #86868b;
+            cursor: not-allowed;
+        }
+        .refresh-btn {
+            background: #34c759;
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+        .error {
+            background: #ff3b30;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .success {
+            background: #34c759;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🎙️ Voice AI Admin Dashboard</h1>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="error-message" class="error" style="display: none;"></div>
+        <div id="success-message" class="success" style="display: none;"></div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Concurrent Calls</h3>
+                <div class="value" id="concurrent-calls">-</div>
+                <div class="label">Active Now</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Sessions</h3>
+                <div class="value" id="total-sessions">-</div>
+                <div class="label">All Time</div>
+            </div>
+            <div class="stat-card">
+                <h3>Avg Duration</h3>
+                <div class="value" id="avg-duration">-</div>
+                <div class="label">Seconds</div>
+            </div>
+            <div class="stat-card">
+                <h3>System Uptime</h3>
+                <div class="value" id="uptime">-</div>
+                <div class="label">Hours</div>
+            </div>
+        </div>
+
+        <!-- Active Calls -->
+        <div class="section">
+            <h2>🔴 Active Calls</h2>
+            <button class="btn refresh-btn" onclick="refreshDashboard()">🔄 Refresh</button>
+            <div id="active-calls">
+                <div class="loading">Loading active calls...</div>
+            </div>
+        </div>
+
+        <!-- Initiate Outbound Call -->
+        <div class="section">
+            <h2>📞 Initiate Outbound Call</h2>
+            <div class="outbound-section">
+                <div>
+                    <div class="form-group">
+                        <label for="phone-number">Phone Number (E.164 format)</label>
+                        <input type="tel" id="phone-number" placeholder="+1234567890" />
+                    </div>
+                    <div class="form-group">
+                        <label for="customer-name">Customer Name (Optional)</label>
+                        <input type="text" id="customer-name" placeholder="John Smith" />
+                    </div>
+                </div>
+                <button class="btn" onclick="initiateCall()">📞 Call Now</button>
+            </div>
+        </div>
+
+        <!-- Recent Call Logs -->
+        <div class="section">
+            <h2>📋 Recent Call Logs</h2>
+            <div id="call-logs">
+                <div class="loading">Loading call logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dashboardData = {};
+
+        // Load dashboard on page load
+        window.addEventListener('load', () => {
+            refreshDashboard();
+            // Auto-refresh every 5 seconds
+            setInterval(refreshDashboard, 5000);
+        });
+
+        async function refreshDashboard() {
+            try {
+                const response = await fetch('/admin/dashboard');
+                dashboardData = await response.json();
+                updateDashboard();
+            } catch (error) {
+                showError('Failed to load dashboard data');
+                console.error('Dashboard error:', error);
+            }
+        }
+
+        function updateDashboard() {
+            // Update stats
+            document.getElementById('concurrent-calls').textContent = dashboardData.stats?.concurrent || '0';
+            document.getElementById('total-sessions').textContent = dashboardData.stats?.total || '0';
+            document.getElementById('avg-duration').textContent = dashboardData.stats?.avgDurationSeconds || '0';
+            document.getElementById('uptime').textContent = Math.round((dashboardData.stats?.uptime || 0) / 3600);
+
+            // Update active calls
+            const activeCallsEl = document.getElementById('active-calls');
+            if (dashboardData.activeCalls && dashboardData.activeCalls.length > 0) {
+                activeCallsEl.innerHTML = dashboardData.activeCalls.map(call => `
+                    <div class="call-item">
+                        <div class="call-info">
+                            <div class="call-id">${call.callId.substring(0, 8)}...</div>
+                            <div class="call-details">
+                                ${call.customerName || 'Unknown'} • ${call.intent || 'detecting'} • ${call.duration}s
+                            </div>
+                        </div>
+                        <div class="call-status status-${call.status}">${call.status}</div>
+                    </div>
+                `).join('');
+            } else {
+                activeCallsEl.innerHTML = '<div class="loading">No active calls</div>';
+            }
+
+            // Load recent logs
+            loadCallLogs();
+        }
+
+        async function loadCallLogs() {
+            try {
+                const response = await fetch('/admin/logs?limit=10');
+                const data = await response.json();
+                
+                const logsEl = document.getElementById('call-logs');
+                if (data.logs && data.logs.length > 0) {
+                    logsEl.innerHTML = data.logs.map(log => `
+                        <div class="call-item">
+                            <div class="call-info">
+                                <div class="call-id">${log.callId.substring(0, 8)}...</div>
+                                <div class="call-details">
+                                    ${log.customerName} • ${log.intent} • ${log.duration}s • ${new Date(log.startTime).toLocaleTimeString()}
+                                </div>
+                            </div>
+                            <div class="call-status status-${log.status}">${log.status}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    logsEl.innerHTML = '<div class="loading">No call logs</div>';
+                }
+            } catch (error) {
+                document.getElementById('call-logs').innerHTML = '<div class="loading">Error loading logs</div>';
+            }
+        }
+
+        async function initiateCall() {
+            const phoneNumber = document.getElementById('phone-number').value.trim();
+            const customerName = document.getElementById('customer-name').value.trim();
+
+            if (!phoneNumber) {
+                showError('Phone number is required');
+                return;
+            }
+
+            if (!phoneNumber.startsWith('+')) {
+                showError('Phone number must be in E.164 format (e.g., +1234567890)');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/calls/initiate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber,
+                        metadata: { customerName }
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess(`Call initiated to ${phoneNumber}! Call ID: ${result.callId}`);
+                    document.getElementById('phone-number').value = '';
+                    document.getElementById('customer-name').value = '';
+                    // Refresh dashboard to show new call
+                    setTimeout(refreshDashboard, 1000);
+                } else {
+                    showError(result.message || 'Failed to initiate call');
+                }
+            } catch (error) {
+                showError('Failed to initiate call');
+                console.error('Call initiation error:', error);
+            }
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => errorEl.style.display = 'none', 5000);
+        }
+
+        function showSuccess(message) {
+            const successEl = document.getElementById('success-message');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            setTimeout(() => successEl.style.display = 'none', 5000);
+        }
+    </script>
+</body>
+</html>

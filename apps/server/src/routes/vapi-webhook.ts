@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { VapiWebhookEventSchema } from '../types/vapi.js';
 import { sessionStore } from '../memory/session-store.js';
 import { agentRouter } from '../agents/index.js';
+import { businessManager } from '../services/business-manager.js';
 import { webhookLogger as logger } from '../utils/logger.js';
 import { forLogging } from '../utils/redact.js';
 
@@ -91,33 +92,63 @@ async function processVapiEvent(event: any) {
  */
 async function handleCallStarted(event: any) {
   try {
-    logger.info({
-      callId: event.callId,
-      phoneNumber: event.call?.phoneNumber,
-      customer: forLogging(event.call?.customer),
-    }, 'Call started');
+    const phoneNumber = event.call?.phoneNumber;
+    const customerPhone = event.call?.customer?.number;
 
-    // Create new session
+    console.log('\n🏢 === BUSINESS CALL STARTED ===');
+    console.log(`📞 Business Phone: ${phoneNumber}`);
+    console.log(`👤 Customer Phone: ${customerPhone}`);
+    console.log(`🆔 Call ID: ${event.callId}`);
+
+    // Find which business this call belongs to
+    const business = businessManager.getBusinessByPhone(phoneNumber);
+    if (!business) {
+      console.log('❌ No business found for phone number:', phoneNumber);
+      logger.warn({ phoneNumber }, 'No business configured for phone number');
+      return;
+    }
+
+    console.log(`🏢 Business: ${business.name} (${business.industry})`);
+    console.log(`🎯 Primary Intent: ${business.voiceConfig.primaryIntent}`);
+    console.log('================================\n');
+
+    // Start business session
+    const businessSession = businessManager.startSession(phoneNumber, customerPhone, event.callId);
+    if (!businessSession) {
+      logger.error({ phoneNumber, callId: event.callId }, 'Failed to start business session');
+      return;
+    }
+
+    // Create legacy session for compatibility
     const session = sessionStore.create(event.callId, {
-      phoneNumber: event.call?.phoneNumber,
+      businessId: business.id,
+      businessName: business.name,
+      phoneNumber,
       customer: event.call?.customer,
       assistantId: event.call?.assistantId,
       vapiMetadata: event.call?.metadata,
+      businessConfig: business.voiceConfig,
     });
 
-    // Add initial transcript entry
+    // Use custom greeting if configured
+    const greeting = business.voiceConfig.customPrompts.greeting || agentRouter.getInitialGreeting();
+    
     sessionStore.addTranscript(event.callId, {
       who: 'agent',
-      text: agentRouter.getInitialGreeting(),
+      text: greeting,
       timestamp: Date.now(),
     });
 
-    logger.debug({
+    logger.info({
       callId: event.callId,
-      sessionCreated: true,
-    }, 'Session created for new call');
+      businessId: business.id,
+      businessName: business.name,
+      customerPhone,
+      primaryIntent: business.voiceConfig.primaryIntent,
+    }, 'Business call started');
 
   } catch (error) {
+    console.log('❌ ERROR starting call:', error);
     logger.error({
       error,
       callId: event.callId,

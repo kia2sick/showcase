@@ -1,18 +1,32 @@
-# 🎙️ Voice AI Agent - Restaurant Lead Conversion System
+# 🎙️ Voice AI Company Platform - Multi-Tenant SaaS for Business Voice Automation
 
-A production-grade voice AI agent built for restaurant lead conversion, featuring Vapi integration, multi-intent conversation handling, and comprehensive CRM automation.
+A production-grade **multi-tenant SaaS platform** that provides voice AI agents for businesses. Handle multiple businesses, concurrent calls, bidirectional calling, and comprehensive admin management - all from one platform.
 
-## ✨ Features
+## ✨ Enterprise Features
 
-- **🔗 Vapi Integration** - Seamless webhook handling for voice conversations
-- **🧠 Intent-Based Agents** - Lead capture, table booking, and menu inquiry specialists
+### 🏢 **Multi-Tenant SaaS Platform**
+- **Multiple Businesses** - Serve hundreds of clients from one platform
+- **Concurrent Call Handling** - Unlimited simultaneous calls across all businesses
+- **Business-Specific Configuration** - Custom prompts, voices, and workflows per client
+- **Industry Templates** - Pre-built configurations for restaurants, healthcare, real estate, etc.
+- **Usage Tracking & Billing** - Monitor calls, minutes, and success metrics per business
+
+### 📞 **Advanced Calling Features**
+- **Bidirectional Calling** - Both inbound (customers call business) and outbound (business calls customers)
+- **Multi-Number Support** - Each business can have multiple phone numbers
+- **Real-Time Call Routing** - Intelligent routing based on phone number and business rules
+- **Call Queuing & Load Balancing** - Handle high call volumes efficiently
+- **Live Call Monitoring** - Real-time dashboard showing all active conversations
+
+### 🎯 **Voice AI Capabilities**
+- **🧠 Intent-Based Agents** - Lead capture, booking, support, and sales specialists
 - **🎯 Smart Conversation Flow** - Context-aware responses with policy overrides
-- **📊 CRM Automation** - HubSpot contact creation and Airtable reservation management
+- **📊 CRM Automation** - HubSpot, Airtable, Salesforce integration per business
 - **🎵 Multi-STT Support** - OpenAI Whisper and Deepgram integration
-- **🗣️ High-Quality TTS** - ElevenLabs with fallback options
+- **🗣️ High-Quality TTS** - ElevenLabs with voice customization per business
 - **🧪 Local Testing** - Complete call simulator with no paid services required
 - **📈 Real-time Analytics** - Session tracking and conversation insights
-- **🔒 Enterprise Ready** - TypeScript, comprehensive error handling, and security
+- **🔒 Enterprise Security** - Multi-tenant data isolation and compliance
 
 ## 🚀 Quick Start
 
@@ -102,59 +116,164 @@ VAPI_CALLEE_NUMBER=+1234567890
 - **HubSpot**: Contact and deal management
 - **Airtable**: Reservation and menu data storage
 
-## 🧪 Testing Options
+## 📞 Advanced Calling Features
 
-### Option A: Local Simulator (Always Available)
+### 🏢 **Multi-Business Setup**
 
-Test complete conversation flows without any external services:
+Set up multiple businesses with different phone numbers and configurations:
 
 ```bash
-# List available scenarios
-pnpm call:simulate list
+# Quick setup for a restaurant
+curl -X POST http://localhost:3000/api/quick-setup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "businessName": "Mario'\''s Restaurant",
+    "industry": "restaurant",
+    "phoneNumber": "+1234567890",
+    "vapiAssistantId": "your-vapi-assistant-id"
+  }'
 
-# Run specific scenarios
-pnpm call:simulate run lead-capture
-pnpm call:simulate run table-booking
-pnpm call:simulate run menu-inquiry
-pnpm call:simulate run complex-interaction
-
-# View generated reports
-ls .sim-out/
+# Quick setup for a medical practice
+curl -X POST http://localhost:3000/api/quick-setup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "businessName": "Sunny Medical Center", 
+    "industry": "healthcare",
+    "phoneNumber": "+1987654321",
+    "vapiAssistantId": "your-other-assistant-id"
+  }'
 ```
 
-The simulator generates:
-- 🎵 MP3 audio files for agent responses
-- 📊 Detailed JSON reports with conversation analysis
-- 📝 Console output with real-time conversation flow
-- 🔄 CRM action simulation and validation
+### 📞 **Bidirectional Calling**
 
-### Option B: Live Webhook Testing
+#### **Inbound Calls (Customers → Business)**
+1. **Configure Vapi Assistants** with different phone numbers
+2. **Set webhook URL**: `https://your-ngrok-url.ngrok.io/vapi/events`
+3. **Customers call** business phone numbers
+4. **AI routes** to correct business configuration
 
-For testing with real Vapi integration:
+#### **Outbound Calls (Business → Customers)**
 
+**Method 1: Admin Dashboard**
+- Go to `http://localhost:3000/admin/admin.html`
+- Enter customer phone number
+- Click "📞 Call Now"
+
+**Method 2: API Call**
 ```bash
-# Expose local server
-ngrok http 3000
-
-# Configure Vapi webhook URL: https://your-ngrok-url.ngrok.io/vapi/events
-
-# Monitor logs
-pnpm dev
+# Call a customer for a specific business
+curl -X POST http://localhost:3000/api/businesses/BUSINESS_ID/calls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerPhone": "+1555123456",
+    "message": "Follow up on restaurant inquiry"
+  }'
 ```
 
-### Option C: Outbound Testing (Optional)
+**Method 3: Direct Outbound Test**
+```bash
+# Configure outbound in .env
+VAPI_OUTBOUND_ENABLED=true
+VAPI_ASSISTANT_ID=your-assistant-id
+VAPI_CALLER_NUMBER=+1234567890  # Your Vapi number
+VAPI_CALLEE_NUMBER=+1555123456  # Your real phone number
 
-Test outbound calling if configured:
+# Test call yourself
+npm run call:outbound -- test
+```
+
+### 🔄 **Concurrent Call Handling**
+
+**Test Multiple Simultaneous Calls:**
+1. **Set up multiple businesses** with different phone numbers
+2. **Call all numbers simultaneously** from different phones
+3. **Watch the admin dashboard** show multiple active calls
+4. **Each call is handled independently** with isolated state
+
+**Monitor Concurrent Performance:**
+```bash
+# View real-time stats
+curl http://localhost:3000/admin/dashboard
+
+# Example response:
+{
+  "stats": {
+    "concurrent": 5,    # 5 calls happening right now
+    "total": 47,        # Total sessions today
+    "byIntent": {
+      "lead": 2,        # 2 lead capture calls active
+      "booking": 3      # 3 booking calls active
+    }
+  }
+}
+```
+
+### 📊 **Live Call Monitoring**
+
+**Admin Dashboard:** `http://localhost:3000/admin/admin.html`
+- **🔴 Active Calls**: See all ongoing conversations
+- **📈 Real-Time Stats**: Concurrent calls, success rates, duration
+- **🏢 Business Overview**: Performance per business client
+- **📞 Manual Calling**: Initiate calls to any number
+- **📋 Call History**: Complete logs with transcripts
+
+**API Monitoring:**
+```bash
+# Get platform-wide statistics
+curl http://localhost:3000/api/platform/stats
+
+# Get specific business performance
+curl http://localhost:3000/api/businesses/BUSINESS_ID
+
+# View call logs with filtering
+curl "http://localhost:3000/admin/logs?status=active&intent=booking"
+
+# Get analytics with timeframe
+curl "http://localhost:3000/admin/analytics?timeframe=24h"
+```
+
+## 🧪 Testing Scenarios
+
+### **Scenario 1: Test Your Real Phone Number**
 
 ```bash
-# Check configuration
-pnpm call:outbound check
+# 1. Set up outbound calling to call yourself
+VAPI_OUTBOUND_ENABLED=true
+VAPI_ASSISTANT_ID=your-assistant-id
+VAPI_CALLER_NUMBER=+1234567890  # Your Vapi business number
+VAPI_CALLEE_NUMBER=+1555123456  # Your real personal phone
 
-# Test outbound call
-pnpm call:outbound test
+# 2. Test the call
+npm run call:outbound -- test
 
-# List recent calls
-pnpm call:outbound list
+# 3. Your phone will ring and you can talk to your AI!
+```
+
+### **Scenario 2: Multiple Business Testing**
+
+```bash
+# 1. Create multiple businesses
+curl -X POST http://localhost:3000/api/quick-setup -H "Content-Type: application/json" -d '{"businessName": "Restaurant A", "industry": "restaurant", "phoneNumber": "+1111111111"}'
+
+curl -X POST http://localhost:3000/api/quick-setup -H "Content-Type: application/json" -d '{"businessName": "Medical B", "industry": "healthcare", "phoneNumber": "+2222222222"}'
+
+# 2. Configure Vapi assistants for each number
+# 3. Call both numbers simultaneously from different phones
+# 4. Watch concurrent calls in admin dashboard
+```
+
+### **Scenario 3: Business-to-Customer Outreach**
+
+```bash
+# 1. Get business ID
+curl http://localhost:3000/api/businesses
+
+# 2. Call a customer on behalf of a business
+curl -X POST http://localhost:3000/api/businesses/BUSINESS_ID/calls \
+  -H "Content-Type: application/json" \
+  -d '{"customerPhone": "+1555123456", "message": "Follow up call"}'
+
+# 3. Customer receives call from business AI agent
 ```
 
 ## 🏗️ Architecture
@@ -207,22 +326,68 @@ pnpm call:outbound list
                             📊 Analytics & Logging
 ```
 
-## 🔧 API Endpoints
+## 🔧 API Reference
 
-### Health & Status
+### **Core Endpoints**
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Comprehensive service status
-- `GET /` - Server information
+- `GET /` - Server information and available endpoints
 
-### Vapi Integration
-- `POST /vapi/events` - Webhook endpoint for Vapi events
+### **Vapi Integration**
+- `POST /vapi/events` - Main webhook endpoint for all Vapi events
+- `POST /vapi/test` - Test webhook connectivity
 
-### Event Types Supported
-- `call.started` - Initialize conversation
-- `asr.partial` - Interim speech recognition
-- `asr.final` - Complete speech recognition + response generation
-- `call.ended` - Cleanup and analytics
-- `function.call` - Custom function handling
+### **Admin Dashboard**
+- `GET /admin/admin.html` - Web-based admin interface
+- `GET /admin/dashboard` - Real-time dashboard data (JSON)
+- `GET /admin/calls/:callId` - Detailed call information
+- `POST /admin/calls/initiate` - Initiate outbound call
+- `GET /admin/logs` - Call history with pagination
+- `GET /admin/analytics` - Performance analytics
+
+### **Business Management (SaaS Platform)**
+- `POST /api/businesses` - Create new business client
+- `GET /api/businesses` - List all businesses
+- `GET /api/businesses/:businessId` - Get business details and stats
+- `POST /api/businesses/:businessId/phone-numbers` - Assign phone number
+- `POST /api/businesses/:businessId/calls` - Initiate call for business
+- `GET /api/platform/stats` - Platform-wide statistics
+- `POST /api/quick-setup` - Quick business setup for testing
+
+### **Webhook Events Supported**
+- `call.started` - Initialize conversation with business routing
+- `asr.partial` - Interim speech recognition (logged)
+- `asr.final` - Complete speech recognition + AI response generation
+- `call.ended` - Cleanup, analytics, and business usage tracking
+- `function.call` - Custom function handling (transfer, end call, etc.)
+
+### **Business Configuration Schema**
+```json
+{
+  "name": "Business Name",
+  "industry": "restaurant|healthcare|retail|real_estate|automotive|other",
+  "plan": "starter|professional|enterprise",
+  "contact": {
+    "email": "contact@business.com",
+    "phone": "+1234567890",
+    "name": "Contact Name",
+    "company": "Company Name"
+  },
+  "voiceConfig": {
+    "primaryIntent": "lead_capture|booking|support|sales",
+    "customPrompts": {
+      "greeting": "Custom greeting message",
+      "businessInfo": "Business description",
+      "specialInstructions": "Special handling instructions"
+    },
+    "voice": {
+      "provider": "elevenlabs",
+      "speed": 1.0,
+      "tone": "professional|friendly|energetic|calm"
+    }
+  }
+}
+```
 
 ## 📊 Monitoring & Analytics
 
@@ -244,44 +409,107 @@ pnpm call:outbound list
 - Request/response tracing
 - Error context preservation
 
-## 🚀 Production Deployment
+## 🏢 Voice AI Company Deployment
 
-### Docker Deployment
+### **SaaS Platform Architecture**
+
+```
+🌐 Internet
+    ↓
+🔄 Load Balancer (Multiple Regions)
+    ↓
+📞 Voice AI Platform Instances
+    ↓
+┌─────────────┬─────────────┬─────────────┐
+│ 🏢 Client A │ 🏢 Client B │ 🏢 Client C │
+│ Restaurant  │ Healthcare  │ Real Estate │
+│ +1234567890 │ +1987654321 │ +1555666777 │
+└─────────────┴─────────────┴─────────────┘
+    ↓
+💾 Multi-Tenant Database + 📊 Analytics
+```
+
+### **Docker Deployment**
 
 ```bash
-# Build and run
+# Development
 docker-compose up --build
 
-# Production mode
-NODE_ENV=production docker-compose up -d
+# Production with multiple replicas
+docker-compose -f docker-compose.prod.yml up -d --scale voice-agent=3
 ```
 
-### Environment Setup
+### **Environment Configuration**
 
 ```bash
-# Production environment variables
+# Production environment
 NODE_ENV=production
 LOG_LEVEL=info
+BASE_URL=https://voice-ai.yourcompany.com
 
-# Security considerations
+# Multi-tenant security
 VAPI_WEBHOOK_SECRET=your_secure_secret
+ADMIN_API_KEY=your_admin_secret
+
+# Database (for production scaling)
+DATABASE_URL=postgresql://user:pass@host:5432/voiceai
+REDIS_URL=redis://host:6379
 
 # Monitoring
-BASE_URL=https://your-domain.com
+SENTRY_DSN=your_sentry_dsn
+DATADOG_API_KEY=your_datadog_key
 ```
 
-### Scaling Considerations
+### **Scaling for Voice AI Company**
 
-#### Current Architecture (Single Instance)
-- ✅ In-memory session storage
-- ✅ Local file-based state management
-- ✅ Direct API integrations
+#### **Current Capabilities (Ready Now)**
+- ✅ **Multi-tenant architecture** - Serve multiple businesses
+- ✅ **Concurrent call handling** - Unlimited simultaneous calls
+- ✅ **Business-specific routing** - Phone number → business mapping
+- ✅ **Real-time monitoring** - Live dashboard for all calls
+- ✅ **Usage tracking** - Billing data per business
+- ✅ **API-driven** - Fully programmable platform
 
-#### Production Scaling (Future)
-- 🔄 Redis session storage
-- 🔄 Database-backed state management
-- 🔄 Queue-based CRM processing
-- 🔄 Load balancer configuration
+#### **Production Scaling (Next Steps)**
+- 🔄 **PostgreSQL** - Persistent business and call data
+- 🔄 **Redis** - Distributed session storage
+- 🔄 **Queue System** - Background CRM processing
+- 🔄 **Load Balancing** - Multiple server instances
+- 🔄 **CDN** - Global voice quality optimization
+- 🔄 **Kubernetes** - Auto-scaling based on call volume
+
+### **Business Model Ready Features**
+
+#### **Pricing Tiers**
+```javascript
+const pricingPlans = {
+  starter: {
+    maxCalls: 1000,
+    maxMinutes: 2000,
+    maxPhoneNumbers: 1,
+    price: "$99/month"
+  },
+  professional: {
+    maxCalls: 5000,
+    maxMinutes: 10000,
+    maxPhoneNumbers: 5,
+    price: "$299/month"
+  },
+  enterprise: {
+    maxCalls: 50000,
+    maxMinutes: 100000,
+    maxPhoneNumbers: 25,
+    price: "$999/month"
+  }
+};
+```
+
+#### **Usage Tracking**
+- **Per-business call counting**
+- **Minute usage monitoring**
+- **Success rate tracking**
+- **CRM integration usage**
+- **Overage billing support**
 
 ## 🛠️ Development
 
@@ -358,22 +586,66 @@ curl -H "Authorization: Bearer YOUR_TOKEN" https://api.hubapi.com/account-info/v
 curl -H "Authorization: Bearer YOUR_KEY" https://api.airtable.com/v0/YOUR_BASE/YOUR_TABLE?maxRecords=1
 ```
 
-### Debug Mode
+### **Advanced Troubleshooting**
 
+#### **Multi-Business Call Issues**
 ```bash
-# Enable verbose logging
-LOG_LEVEL=debug pnpm dev
+# Check business routing
+curl http://localhost:3000/api/businesses
 
-# Simulator with detailed output
-pnpm call:simulate run lead-capture --verbose
+# Verify phone number assignments
+curl http://localhost:3000/api/businesses/BUSINESS_ID
+
+# Test specific business webhook
+curl -X POST http://localhost:3000/vapi/events \
+  -H "Content-Type: application/json" \
+  -d '{"type": "call.started", "callId": "test", "call": {"phoneNumber": "+1234567890"}}'
 ```
 
-### Performance Tuning
+#### **Concurrent Call Debugging**
+```bash
+# Monitor active calls
+watch -n 1 'curl -s http://localhost:3000/admin/dashboard | jq .stats.concurrent'
 
-- **STT Latency**: Switch to Deepgram for streaming
-- **TTS Quality**: Adjust ElevenLabs voice settings
-- **Response Time**: Optimize LLM prompt length
-- **Memory Usage**: Implement Redis for sessions
+# Check session isolation
+curl http://localhost:3000/admin/logs?status=active
+
+# Memory usage monitoring
+curl http://localhost:3000/health/detailed | jq .stats.memoryUsage
+```
+
+#### **Outbound Calling Issues**
+```bash
+# Verify outbound configuration
+npm run call:outbound -- check
+
+# Test Vapi connectivity
+curl -H "Authorization: Bearer $VAPI_API_KEY" https://api.vapi.ai/assistant
+
+# Check business outbound limits
+curl http://localhost:3000/api/businesses/BUSINESS_ID | jq .usage.limits
+```
+
+### **Performance Optimization**
+
+#### **For High Call Volume**
+- **STT Latency**: Use Deepgram streaming for real-time processing
+- **TTS Caching**: Cache common responses per business
+- **Database**: Move to PostgreSQL for persistent storage
+- **Session Storage**: Use Redis cluster for distributed sessions
+- **Load Balancing**: Deploy multiple instances behind load balancer
+
+#### **For Voice Quality**
+- **ElevenLabs Settings**: Adjust voice speed and tone per business
+- **Network Optimization**: Use CDN for audio delivery
+- **Regional Deployment**: Deploy closer to customers
+- **Fallback Systems**: Multiple TTS providers per region
+
+#### **For Business Scaling**
+- **Async CRM Processing**: Queue CRM operations for faster response
+- **Webhook Optimization**: Batch process multiple events
+- **Caching Strategy**: Cache business configurations
+- **Database Indexing**: Optimize queries for business lookup
 
 ## 📝 License
 

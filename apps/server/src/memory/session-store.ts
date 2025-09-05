@@ -170,12 +170,44 @@ class SessionStore {
     const active = sessions.filter(s => s.isActive).length;
     const inactive = sessions.length - active;
     
+    // Enhanced stats for concurrent monitoring
+    const byIntent = {
+      lead: sessions.filter(s => s.currentIntent === 'lead').length,
+      booking: sessions.filter(s => s.currentIntent === 'booking').length,
+      menu: sessions.filter(s => s.currentIntent === 'menu').length,
+      unknown: sessions.filter(s => !s.currentIntent).length,
+    };
+
+    const avgDuration = sessions.length > 0 
+      ? sessions.reduce((sum, s) => sum + (Date.now() - s.createdAt), 0) / sessions.length / 1000 
+      : 0;
+    
     return {
       total: sessions.length,
       active,
       inactive,
+      concurrent: active, // Current concurrent calls
+      byIntent,
+      avgDurationSeconds: Math.round(avgDuration),
       oldestSession: sessions.length > 0 ? Math.min(...sessions.map(s => s.createdAt)) : null,
     };
+  }
+
+  /**
+   * Get active sessions for monitoring
+   */
+  getActiveSessions(): ExtendedSession[] {
+    return Array.from(this.sessions.values()).filter(s => s.isActive);
+  }
+
+  /**
+   * Get session by phone number
+   */
+  getSessionByPhone(phoneNumber: string): ExtendedSession | undefined {
+    return Array.from(this.sessions.values()).find(
+      session => session.metadata?.customer?.number === phoneNumber || 
+                session.metadata?.phoneNumber === phoneNumber
+    );
   }
 
   /**
