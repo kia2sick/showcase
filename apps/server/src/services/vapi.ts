@@ -37,6 +37,7 @@ export class VapiService {
         customer: request.customer,
       }, 'Starting Vapi outbound call');
 
+      // Updated Vapi API format based on documentation
       const response = await httpWithRetry(vapiClient, {
         method: 'POST',
         url: '/call', // Vapi outbound call endpoint
@@ -45,11 +46,13 @@ export class VapiService {
           'Content-Type': 'application/json',
         },
         data: {
-          assistant: {
-            id: request.assistantId,
+          assistantId: request.assistantId,
+          customer: {
+            number: request.phoneNumber,  // The number to call
+            name: request.customer.name || 'Customer',
           },
-          phoneNumber: request.phoneNumber,
-          customer: request.customer,
+          // Optional: specify caller number if needed
+          phoneNumberId: null,
           metadata: request.metadata || {},
         },
       });
@@ -62,13 +65,34 @@ export class VapiService {
       return response.data;
 
     } catch (error: any) {
+      // Enhanced error logging to see exact Vapi response
       logger.error({
         error: error.message,
         status: error.response?.status,
+        statusText: error.response?.statusText,
+        responseData: error.response?.data,
+        requestData: {
+          assistantId: request.assistantId,
+          phoneNumber: request.phoneNumber,
+          customer: request.customer,
+        },
+        headers: error.response?.headers,
         phoneNumber: request.phoneNumber,
-      }, 'Vapi outbound call failed');
+      }, 'Vapi outbound call failed with detailed error');
 
-      throw new Error(`Vapi outbound call failed: ${error.message}`);
+      // Log to console for immediate debugging
+      console.log('\n❌ === VAPI API ERROR DETAILS ===');
+      console.log('Status:', error.response?.status);
+      console.log('Status Text:', error.response?.statusText);
+      console.log('Error Response:', JSON.stringify(error.response?.data, null, 2));
+      console.log('Request Data:', JSON.stringify({
+        assistantId: request.assistantId,
+        customer: { number: request.phoneNumber, name: request.customer.name },
+        metadata: request.metadata
+      }, null, 2));
+      console.log('================================\n');
+
+      throw new Error(`Vapi outbound call failed: ${error.message} - Status: ${error.response?.status}`);
     }
   }
 
