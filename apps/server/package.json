@@ -1,0 +1,45 @@
+{
+  "name": "@app/server",
+  "version": "1.0.0",
+  "description": "Voice AI agent server",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest",
+    "call:simulate": "tsx src/testkit/simulator.ts",
+    "call:outbound": "tsx src/testkit/outbound.ts",
+    "seed:menu": "tsx src/state/menu.ts --seed"
+  },
+  "dependencies": {
+    "axios": "^1.5.0",
+    "commander": "^14.0.0",
+    "dotenv": "^16.3.0",
+    "express": "^4.18.0",
+    "form-data": "^4.0.0",
+    "node-cron": "^3.0.0",
+    "pino": "^8.15.0",
+    "pino-pretty": "^10.2.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.14.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "@types/ws": "^8.5.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "nock": "^13.3.0",
+    "prettier": "^3.0.0",
+    "supertest": "^6.3.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^0.34.0"
+  }
+}

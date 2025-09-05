@@ -1,0 +1,322 @@
+import { Request, Response } from 'express';
+import { VapiWebhookEventSchema } from '../types/vapi.js';
+import { sessionStore } from '../memory/session-store.js';
+import { agentRouter } from '../agents/index.js';
+import { webhookLogger as logger } from '../utils/logger.js';
+import { forLogging } from '../utils/redact.js';
+
+/**
+ * Vapi webhook handler
+ * Processes incoming webhook events from Vapi
+ */
+export async function handleVapiWebhook(req: Request, res: Response) {
+  try {
+    logger.debug({ 
+      headers: req.headers,
+      body: forLogging(req.body) 
+    }, 'Vapi webhook received');
+
+    // Validate the webhook payload
+    const event = VapiWebhookEventSchema.parse(req.body);
+    
+    logger.info({
+      type: event.type,
+      callId: event.callId,
+    }, 'Processing Vapi webhook event');
+
+    // Process the event
+    await processVapiEvent(event);
+
+    // Respond quickly to Vapi
+    res.status(200).json({ received: true });
+
+  } catch (error) {
+    logger.error({
+      error,
+      body: forLogging(req.body),
+    }, 'Vapi webhook processing failed');
+
+    // Still respond with 200 to avoid retries for malformed data
+    res.status(200).json({ 
+      received: true, 
+      error: 'Processing failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Process different types of Vapi events
+ */
+async function processVapiEvent(event: any) {
+  switch (event.type) {
+    case 'call.started':
+      await handleCallStarted(event);
+      break;
+      
+    case 'asr.partial':
+      await handleASRPartial(event);
+      break;
+      
+    case 'asr.final':
+      await handleASRFinal(event);
+      break;
+      
+    case 'call.ended':
+      await handleCallEnded(event);
+      break;
+      
+    case 'function.call':
+      await handleFunctionCall(event);
+      break;
+      
+    default:
+      logger.warn({ 
+        type: event.type,
+        callId: event.callId 
+      }, 'Unknown Vapi event type');
+  }
+}
+
+/**
+ * Handle call started event
+ */
+async function handleCallStarted(event: any) {
+  try {
+    logger.info({
+      callId: event.callId,
+      phoneNumber: event.call?.phoneNumber,
+      customer: forLogging(event.call?.customer),
+    }, 'Call started');
+
+    // Create new session
+    const session = sessionStore.create(event.callId, {
+      phoneNumber: event.call?.phoneNumber,
+      customer: event.call?.customer,
+      assistantId: event.call?.assistantId,
+      vapiMetadata: event.call?.metadata,
+    });
+
+    // Add initial transcript entry
+    sessionStore.addTranscript(event.callId, {
+      who: 'agent',
+      text: agentRouter.getInitialGreeting(),
+      timestamp: Date.now(),
+    });
+
+    logger.debug({
+      callId: event.callId,
+      sessionCreated: true,
+    }, 'Session created for new call');
+
+  } catch (error) {
+    logger.error({
+      error,
+      callId: event.callId,
+    }, 'Failed to handle call started event');
+  }
+}
+
+/**
+ * Handle partial ASR (speech recognition) results
+ */
+async function handleASRPartial(event: any) {
+  try {
+    logger.debug({
+      callId: event.callId,
+      transcript: event.transcript,
+      confidence: event.confidence,
+    }, 'Partial ASR result');
+
+    // For partial results, we might want to show typing indicators
+    // or prepare responses, but typically don't take action until final
+    
+  } catch (error) {
+    logger.error({
+      error,
+      callId: event.callId,
+    }, 'Failed to handle ASR partial event');
+  }
+}
+
+/**
+ * Handle final ASR results and generate responses
+ */
+async function handleASRFinal(event: any) {
+  try {
+    logger.info({
+      callId: event.callId,
+      transcript: event.transcript,
+      confidence: event.confidence,
+    }, 'Final ASR result');
+
+    const session = sessionStore.get(event.callId);
+    if (!session) {
+      logger.warn({
+        callId: event.callId,
+      }, 'No session found for ASR final event');
+      return;
+    }
+
+    // Add caller transcript
+    sessionStore.addTranscript(event.callId, {
+      who: 'caller',
+      text: event.transcript,
+      timestamp: Date.now(),
+      confidence: event.confidence,
+    });
+
+    // Generate agent response
+    const response = await agentRouter.processMessage(session, event.transcript);
+
+    // Add agent response to transcript
+    sessionStore.addTranscript(event.callId, {
+      who: 'agent',
+      text: response,
+      timestamp: Date.now(),
+    });
+
+    logger.info({
+      callId: event.callId,
+      responseGenerated: true,
+      responseLength: response.length,
+      currentIntent: session.currentIntent,
+    }, 'Agent response generated');
+
+    // In a real implementation, you would send this response back to Vapi
+    // via their API to have it spoken to the caller
+
+  } catch (error) {
+    logger.error({
+      error,
+      callId: event.callId,
+      transcript: event.transcript,
+    }, 'Failed to handle ASR final event');
+  }
+}
+
+/**
+ * Handle call ended event
+ */
+async function handleCallEnded(event: any) {
+  try {
+    logger.info({
+      callId: event.callId,
+      duration: event.call?.duration,
+      endedReason: event.call?.endedReason,
+      cost: event.call?.cost,
+    }, 'Call ended');
+
+    const session = sessionStore.get(event.callId);
+    if (!session) {
+      logger.warn({
+        callId: event.callId,
+      }, 'No session found for call ended event');
+      return;
+    }
+
+    // Mark session as inactive
+    sessionStore.deactivate(event.callId);
+
+    // Log call summary
+    const callSummary = {
+      callId: event.callId,
+      duration: event.call?.duration,
+      intent: session.currentIntent,
+      collectedData: forLogging(session.collected),
+      transcriptLength: session.transcript.length,
+      crmActions: session.crmActions.length,
+      successfulCRMActions: session.crmActions.filter(a => a.status === 'success').length,
+    };
+
+    logger.info(callSummary, 'Call completed with summary');
+
+  } catch (error) {
+    logger.error({
+      error,
+      callId: event.callId,
+    }, 'Failed to handle call ended event');
+  }
+}
+
+/**
+ * Handle function call events (if using Vapi function calling)
+ */
+async function handleFunctionCall(event: any) {
+  try {
+    logger.info({
+      callId: event.callId,
+      functionName: event.functionCall?.name,
+      parameters: forLogging(event.functionCall?.parameters),
+    }, 'Function call received');
+
+    // Handle different function calls
+    switch (event.functionCall?.name) {
+      case 'transfer_to_human':
+        await handleTransferToHuman(event);
+        break;
+        
+      case 'end_call':
+        await handleEndCall(event);
+        break;
+        
+      default:
+        logger.warn({
+          callId: event.callId,
+          functionName: event.functionCall?.name,
+        }, 'Unknown function call');
+    }
+
+  } catch (error) {
+    logger.error({
+      error,
+      callId: event.callId,
+      functionCall: event.functionCall,
+    }, 'Failed to handle function call event');
+  }
+}
+
+/**
+ * Handle transfer to human request
+ */
+async function handleTransferToHuman(event: any) {
+  const session = sessionStore.get(event.callId);
+  if (!session) return;
+
+  logger.info({
+    callId: event.callId,
+    reason: event.functionCall?.parameters?.reason,
+  }, 'Transfer to human requested');
+
+  // Add note to session
+  sessionStore.addTranscript(event.callId, {
+    who: 'agent',
+    text: 'Transferring to human agent as requested',
+    timestamp: Date.now(),
+  });
+
+  // In a real implementation, you would trigger the transfer via Vapi's API
+}
+
+/**
+ * Handle end call request
+ */
+async function handleEndCall(event: any) {
+  const session = sessionStore.get(event.callId);
+  if (!session) return;
+
+  logger.info({
+    callId: event.callId,
+    reason: event.functionCall?.parameters?.reason,
+  }, 'End call requested');
+
+  // Add final message
+  sessionStore.addTranscript(event.callId, {
+    who: 'agent',
+    text: 'Thank you for calling. Have a great day!',
+    timestamp: Date.now(),
+  });
+
+  // Mark session as completed
+  sessionStore.deactivate(event.callId);
+}

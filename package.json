@@ -1,0 +1,28 @@
+{
+  "name": "voice-agent",
+  "version": "1.0.0",
+  "description": "Voice AI agent for lead conversion with Vapi integration",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @app/server dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @app/server start",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "call:simulate": "pnpm --filter @app/server call:simulate",
+    "call:outbound": "pnpm --filter @app/server call:outbound",
+    "seed:menu": "pnpm --filter @app/server seed:menu"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
