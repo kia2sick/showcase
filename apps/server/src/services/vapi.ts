@@ -47,8 +47,10 @@ export class VapiService {
         },
         data: {
           assistantId: request.assistantId,
-          // Use phoneNumberId instead - Vapi should have the phone number ID for +13462827489
-          phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID || null,
+          phoneNumber: {
+            twilioPhoneNumber: config.VAPI_CALLER_NUMBER, // The business phone number (caller ID)
+            twilioAccountSid: process.env.TWILIO_ACCOUNT_SID || 'default', // Vapi might handle this
+          },
           customer: {
             number: request.phoneNumber,  // The number to call
             name: request.customer.name || 'Customer',
