@@ -47,12 +47,11 @@ export class VapiService {
         },
         data: {
           assistantId: request.assistantId,
+          phoneNumber: config.VAPI_CALLER_NUMBER, // The business phone number (caller ID)
           customer: {
             number: request.phoneNumber,  // The number to call
             name: request.customer.name || 'Customer',
           },
-          // Optional: specify caller number if needed
-          phoneNumberId: null,
           metadata: request.metadata || {},
         },
       });
