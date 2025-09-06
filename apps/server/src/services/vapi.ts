@@ -47,7 +47,9 @@ export class VapiService {
         },
         data: {
           assistantId: request.assistantId,
-          phoneNumber: config.VAPI_CALLER_NUMBER, // The business phone number (caller ID)
+          phoneNumber: {
+            number: config.VAPI_CALLER_NUMBER, // The business phone number (caller ID)
+          },
           customer: {
             number: request.phoneNumber,  // The number to call
             name: request.customer.name || 'Customer',
